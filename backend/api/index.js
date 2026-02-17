@@ -22,7 +22,12 @@ if (config.NODE_ENV === "production") {
         res.sendFile(path.join(__dirname, "../admin", "dist", "index.html"))
     })
 }
-app.listen(config.PORT, () => {
-    connectDB()
-    console.log(`server is running at port ${config.PORT}`);
-})
+
+const startServer = async () => {
+   await connectDB();
+    app.listen(config.PORT, () => {
+        console.log(`server is running at port ${config.PORT}`);
+    });
+};
+
+startServer();
