@@ -14,6 +14,8 @@ const config = {
     COULDNARY_API_KEY: process.env.COULDNARY_API_KEY,
     COULDNARY_API_SECRET: process.env.COULDNARY_API_SECRET,
     COULDNARY_CLOUD_NAME: process.env.COULDNARY_CLOUD_NAME,
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+    
 };   
 
 export default config;  
