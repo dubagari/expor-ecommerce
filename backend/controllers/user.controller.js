@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
+import User from "../models/User.model.js";
 import { errorHandler } from "../middleware/error.js";
 
 export const signup = async (req, res, next) => {
@@ -88,3 +88,143 @@ export const getAllUser = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+export const addAddress = async (req, res) => {
+  try {
+    const { label, fullName, streetAddress, city, state, zip, country, phoneNumber, isDefault } = req.body
+    
+    const user = req.user 
+    
+    if(isDefault){
+        user.address.forEach(address => {
+            address.isDefault = false
+        })
+    }
+    user.address.push({
+      label,
+      fullName,
+      streetAddress,
+      city,
+      state,
+      zip,
+      country,
+      phoneNumber,
+      isDefault
+    })
+    await user.save()
+    res.status(200).json({message:"Address added successfully"})
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}     
+
+export const getAddress = async (req, res) => {
+    try {
+      const user = req.user
+      res.status(200).json({
+        success: true,
+        address: user.address
+      })
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}   
+
+export const updateAddress = async (req, res) => {
+    try {
+      const { label, fullName, streetAddress, city, state, zip, country, phoneNumber, isDefault } = req.body
+
+      const {addressId} = req.params
+      const user = req.user
+      
+      const address = user.address.id(addressId)
+      if(!address){
+        return res.status(404).json({message:"Address not found"})
+      }
+      
+      if(isDefault){
+        user.address.forEach(address => {
+            address.isDefault = false
+        })
+      }
+
+      address.label = label || address.label
+      address.fullName = fullName || address.fullName
+      address.streetAddress = streetAddress || address.streetAddress
+      address.city = city || address.city
+      address.state = state || address.state 
+      address.zip = zip || address.zip
+      address.country = country || address.country
+      address.phoneNumber = phoneNumber || address.phoneNumber
+      address.isDefault = isDefault !== undefined ? isDefault : address.isDefault 
+      await user.save()
+      res.status(200).json({message:"Address updated successfully"})
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}   
+
+export const deleteAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params
+        const user = req.user
+        
+        const address = user.address.pull(addressId)
+        if(!address){
+            return res.status(404).json({message:"Address not found"})
+        }
+        await user.save()
+        res.status(200).json({message:"Address deleted successfully"})
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}     
+
+export const addWishlist = async (req, res) => {
+    try {
+        const { productId } = req.body
+      const user = req.user
+      
+
+        if(user.wishlist.includes(productId)){
+            return res.status(400).json({message:"Product already in wishlist"})
+      }
+      
+        user.wishlist.push(productId)
+      await user.save() 
+      
+        res.status(200).json({message:"Wishlist added successfully", wishlist: user.wishlist})
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}     
+
+export const getWishlist = async (req, res) => {
+    try {
+      const user = req.user
+
+
+        res.status(200).json({wishlist:user.wishlist})
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}   
+
+export const deleteWishlist = async (req, res) => {
+    try {
+      const { productId } = req.params
+      
+      const user = req.user
+        if(!user.wishlist.includes(productId)){
+            return res.status(400).json({message:"Product is not even in wishlist"})
+      }
+      user.wishlist.pull(productId)
+       
+        
+        await user.save()
+        res.status(200).json({message:"Wishlist deleted successfully"})
+    } catch (error) {
+        res.status(500).json({message:"Internal server error"})
+    }
+}     
