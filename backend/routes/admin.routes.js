@@ -1,5 +1,14 @@
 import express from "express";
-import { createProduct, deleteProduct, getAllProduct, getAllCustomers, getDashboardStats, getOrders, updateOrderStatus, updateProduct } from "../controllers/admin.controller.js";
+import {
+    createProduct,
+    deleteProduct,
+    getAllProduct,
+    getAllCustomers,
+    getDashboardStats,
+    getOrders,
+    updateOrderStatus,
+    updateProduct
+} from "../controllers/admin.controller.js";
 import { verifyAdmin, verifyUser } from "../middleware/verifyUser.js";
 import upload from "../middleware/multer.js";
 const router = express.Router();

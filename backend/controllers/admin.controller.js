@@ -1,7 +1,7 @@
-import cloudinary from "../config/cloudnary"
-import Order from "../models/order.model"
-import User from "../models/user.model"
-import Product from "../models/product.model"
+import cloudinary from "../config/cloudnary.js"
+import Order from "../models/Order.model.js"
+import User from "../models/User.model.js"
+import Product from "../models/Product.model.js"
 
 
 export const createProduct = async(req, res) => {
@@ -17,8 +17,7 @@ export const createProduct = async(req, res) => {
         }
 
         const uploadedImages = req.files.map(file => {
-            return cloudinary.uploader.upload(file.path), 
-           { folder:"products"}
+            return cloudinary.uploader.upload(file.path, { folder: "products" })
         })
 
         const uploadResult = await Promise.all(uploadedImages)
@@ -63,8 +62,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const uploadedImages = req.files.map(file => {
-        return cloudinary.uploader.upload(file.path), 
-        { folder:"products"}
+        return cloudinary.uploader.upload(file.path, { folder: "products" })
     })
 
     const uploadResult = await Promise.all(uploadedImages)
