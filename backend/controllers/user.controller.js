@@ -202,9 +202,11 @@ export const addWishlist = async (req, res) => {
 
 export const getWishlist = async (req, res) => {
     try {
-      const user = req.user
-
-
+      
+        const user = await User.findById(req.user._id).populate("wishlist")
+        if(!user){
+            return res.status(404).json({message:"User not found"})
+        }
         res.status(200).json({wishlist:user.wishlist})
     } catch (error) {
         res.status(500).json({message:"Internal server error"})
