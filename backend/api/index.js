@@ -5,7 +5,7 @@ import connectDB from '../config/db.js'
 import cookieParser from 'cookie-parser'
 import userRoutes from '../routes/user.routes.js'
 import adminRoutes from '../routes/admin.routes.js'
-
+import orderRoutes from '../routes/order.routes.js'
 const app = express()
 const __dirname = path.resolve()
 
@@ -23,6 +23,7 @@ app.get('/api', (req, res) => {
 
 app.use('/api/user', userRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/order', orderRoutes)
 
 if (config.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "../admin/dist")))
