@@ -22,14 +22,14 @@ const reviewSchema = new mongoose.Schema({
         min: 1,
         max: 5,
     },
-    // comment: {
-    //     type: String,
-    //     required: true,
-    // },
-    // createdAt: {
-    //     type: Date,
-    //     default: Date.now,
-    // },
+    comment: {
+        type: String,
+        required: true,
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+    },
 }, {
     timestamps: true
 })

@@ -1,232 +1,153 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
+import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { errorHandler } from "../middleware/error.js";
 
+// Signup Logic
 export const signup = async (req, res, next) => {
-  try {
     const { firstname, surname, email, password } = req.body;
+    
+
+   
+    
+    if (!email || !password || !firstname || !surname) {
+        return next(errorHandler(400, "All fields are required"));
+    }
+
+    try {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return next(errorHandler(400, "Email is already in use"));
+        }
+
+        const hashedPassword = bcryptjs.hashSync(password, 10);
+        const newUser = new User({
+            firstname,
+            surname,
+            email,
+            password: hashedPassword,
+        });
+        await newUser.save();
+        res.status(201).json({ message: "User created successfully" });
+    } catch (error) {
+        next(errorHandler(500, "Internal server error", error.message));
+    }
+};
+
+// Login Logic
+export const login = async (req, res, next) => {
+    const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "All required fields must be filled" });
+        return next(errorHandler(400, "All fields are required"));
     }
 
-    // Check if email already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-
-    // Hash password
-    const hash = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-      firstname,
-      surname,
-      email,
-      password: hash,
-   
-    });
-
-    await newUser.save();
-
-    res.status(201).json({ message: "User registered successfully" });
-
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const validUser = await User.findOne({ email });
-
-    if (!validUser)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-
-    const isPasswordValid = bcrypt.compareSync(password, validUser.password);
-    if (!isPasswordValid)
-      return res
-        .status(401)
-        .json({ success: false, message: "Wrong credentials" });
-
-    const token = jwt.sign(
-      { id: validUser._id, },
-      process.env.JWT_SECRET
-    );
-
-    const { password: pass, ...userData } = validUser._doc;
-
-    res
-      .cookie("access_token", token, { httpOnly: true })
-      .status(200)
-      .json({ success: true, ...userData });
-  } catch (error) {
-    next(errorHandler(401, error.message));
-  }
-};
-
-// Logout
-export const logout = async (req, res, next) => {
-  try {
-    res.clearCookie("access_token");
-    res.status(200).json({ message: "Logged out successfully" });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// GET all users (admin only)
-export const getAllUser = async (req, res) => {
-  try {
-    const users = await User.find().select("-password"); // never send passwords
-    res.status(200).json(users);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-
-export const addAddress = async (req, res) => {
-  try {
-    const { label, fullName, streetAddress, city, state, zip, country, phoneNumber, isDefault } = req.body
-    
-    const user = req.user 
-    
-    if(isDefault){
-        user.address.forEach(address => {
-            address.isDefault = false
-        })
-    }
-    user.address.push({
-      label,
-      fullName,
-      streetAddress,
-      city,
-      state,
-      zip,
-      country,
-      phoneNumber,
-      isDefault
-    })
-    await user.save()
-    res.status(200).json({message:"Address added successfully"})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}     
-
-export const getAddress = async (req, res) => {
     try {
-      const user = req.user
-      res.status(200).json({
-        success: true,
-        address: user.address
-      })
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}   
+        const validUser = await User.findOne({ email });
+        if (!validUser) return next(errorHandler(404, "User not found"));
 
-export const updateAddress = async (req, res) => {
-    try {
-      const { label, fullName, streetAddress, city, state, zip, country, phoneNumber, isDefault } = req.body
+        const validPassword = bcryptjs.compareSync(password, validUser.password);
+        if (!validPassword) return next(errorHandler(401, "Invalid credentials"));
 
-      const {addressId} = req.params
-      const user = req.user
-      
-      const address = user.address.id(addressId)
-      if(!address){
-        return res.status(404).json({message:"Address not found"})
-      }
-      
-      if(isDefault){
-        user.address.forEach(address => {
-            address.isDefault = false
-        })
-      }
-
-      address.label = label || address.label
-      address.fullName = fullName || address.fullName
-      address.streetAddress = streetAddress || address.streetAddress
-      address.city = city || address.city
-      address.state = state || address.state 
-      address.zip = zip || address.zip
-      address.country = country || address.country
-      address.phoneNumber = phoneNumber || address.phoneNumber
-      address.isDefault = isDefault !== undefined ? isDefault : address.isDefault 
-      await user.save()
-      res.status(200).json({message:"Address updated successfully"})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}   
-
-export const deleteAddress = async (req, res) => {
-    try {
-        const { addressId } = req.params
-        const user = req.user
+        const token = jwt.sign({ id: validUser._id }, process.env.JWT_SECRET);
         
-        const address = user.address.pull(addressId)
-        if(!address){
-            return res.status(404).json({message:"Address not found"})
+        const { password: pass, ...rest } = validUser._doc;
+
+        res
+            .status(200)
+            .cookie("access_token", token, { httpOnly: true })
+            .json(rest);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get all users (Admin purpose)
+export const getUsers = async (req, res, next) => {
+    try {
+        const users = await User.find().select("-password");
+        res.status(200).json(users);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get user by ID
+export const getUserById = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.params.id).select("-password").populate("wishlist");
+        if (!user) return next(errorHandler(404, "User not found"));
+        res.status(200).json(user);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Update user details
+export const updateUser = async (req, res, next) => {
+    try {
+        if (req.body.password) {
+            req.body.password = bcryptjs.hashSync(req.body.password, 10);
         }
-        await user.save()
-        res.status(200).json({message:"Address deleted successfully"})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}     
 
-export const addWishlist = async (req, res) => {
-    try {
-        const { productId } = req.body
-      const user = req.user
-      
-
-        if(user.wishlist.includes(productId)){
-            return res.status(400).json({message:"Product already in wishlist"})
-      }
-      
-        user.wishlist.push(productId)
-      await user.save() 
-      
-        res.status(200).json({message:"Wishlist added successfully", wishlist: user.wishlist})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}     
-
-export const getWishlist = async (req, res) => {
-    try {
-      
-        const user = await User.findById(req.user._id).populate("wishlist")
-        if(!user){
-            return res.status(404).json({message:"User not found"})
+        if (req.file) {
+            req.body.imageUrl = req.file.path.replace(/\\/g, "/");
         }
-        res.status(200).json({wishlist:user.wishlist})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}   
 
-export const deleteWishlist = async (req, res) => {
-    try {
-      const { productId } = req.params
-      
-      const user = req.user
-        if(!user.wishlist.includes(productId)){
-            return res.status(400).json({message:"Product is not even in wishlist"})
-      }
-      user.wishlist.pull(productId)
-       
+        const updatedUser = await User.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        ).select("-password");
         
-        await user.save()
-        res.status(200).json({message:"Wishlist deleted successfully"})
+        if (!updatedUser) return next(errorHandler(404, "User not found"));
+        res.status(200).json(updatedUser);
     } catch (error) {
-        res.status(500).json({message:"Internal server error"})
+        next(error);
     }
-}     
+};
+
+// Delete user
+export const deleteUser = async (req, res, next) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.id);
+        if (!user) return next(errorHandler(404, "User not found"));
+        res.status(200).json({ message: "User deleted successfully" });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Add to wishlist
+export const addToWishlist = async (req, res, next) => {
+    try {
+        const { userId, productId } = req.body;
+        const user = await User.findById(userId);
+        if (!user) return next(errorHandler(404, "User not found"));
+        
+        if (user.wishlist.includes(productId)) {
+            return next(errorHandler(400, "Product already in wishlist"));
+        }
+
+        user.wishlist.push(productId);
+        await user.save();
+        res.status(200).json(user.wishlist);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Remove from wishlist
+export const removeFromWishlist = async (req, res, next) => {
+    try {
+        const { userId, productId } = req.body;
+        const user = await User.findById(userId);
+        if (!user) return next(errorHandler(404, "User not found"));
+        
+        user.wishlist = user.wishlist.filter(id => id.toString() !== productId);
+        await user.save();
+        res.status(200).json(user.wishlist);
+    } catch (error) {
+        next(error);
+    }
+};
