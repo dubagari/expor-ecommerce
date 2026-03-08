@@ -1,212 +1,43 @@
-import cloudinary from "../config/cloudnary.js"
-import Order from "../models/Order.model.js"
-import User from "../models/User.model.js"
-import Product from "../models/Product.model.js"
+import User from "../models/User.model.js";
+import Product from "../models/Product.model.js";
+import Order from "../models/Order.model.js";
 
-
-export const createProduct = async(req, res) => {
+// Overall Dashboard Stats for Admin
+export const getDashboardStats = async (req, res) => {
     try {
-        const {name,price,description,category,stock}=req.body
-        const images=req.files
-        if(!name || !price || !description || !category || !stock || !images){
-            return res.status(400).json({message:"All fields are required"})
-        }
-
-        if (req.files.length > 3) {
-          return res.status(400).json({message:"Maximum 3 images are allowed"})
-        }
-
-        const uploadedImages = req.files.map(file => {
-            return cloudinary.uploader.upload(file.path, { folder: "products" })
-        })
-
-        const uploadResult = await Promise.all(uploadedImages)
-
-        const imagesUrl = uploadResult.map(result => result.secure_url)
+        const customersCount = await User.countDocuments();
+        const productsCount = await Product.countDocuments();
+        const ordersCount = await Order.countDocuments();
         
-
-        const product = await Product.create({
-            name,
-            price,
-            description,
-            category,
-            stock,
-            images: imagesUrl
-        })
-        
-        res.status(201).json({message:"Product created successfully"})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-}
-
-
-export const updateProduct = async (req, res) => {
-    
-    try {
-            const {id}=req.params
-        const { name, price, description, category, stock } = req.body
-        
-        const product = await Product.findById(id)
-    
-        if(!product){
-            return res.status(404).json({message:"Product not found"})
-    }
-    const images = req.files
-    if(!name || !price || !description || !category || !stock || !images){
-        return res.status(400).json({message:"All fields are required"})
-    }
-
-    if (req.files.length > 3) {
-        return res.status(400).json({message:"Maximum 3 images are allowed"})
-    }
-
-    const uploadedImages = req.files.map(file => {
-        return cloudinary.uploader.upload(file.path, { folder: "products" })
-    })
-
-    const uploadResult = await Promise.all(uploadedImages)
-
-    const imagesUrl = uploadResult.map(result => result.secure_url)
-    
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, {
-        name,
-        price,
-        description,
-        category,
-        stock,
-        images: imagesUrl
-    })
-    await updatedProduct.save()
-    res.status(201).json({message:"Product updated successfully"})
-
-    } catch (error) {
-        console.log('error updating product',error);
-        res.status(500).json({message:"Internal server error"})
-    }    
-    
-    
-}
-
-
-export const getAllProduct=async(req,res)=>{
-    try {
-        const products = await Product.find().sort({createdAt:-1})
-        res.status(200).json(products)
-    } catch (error) {
-        console.log('error fetching products',error);
-        res.status(500).json({message:"Internal server error"})
-    }
-}
-export const deleteProduct=async(req,res)=>{
-    try {
-        const product = await Product.findByIdAndDelete(req.params.id)
-        res.status(200).json({message:"Product deleted successfully"})
-    } catch (error) {
-        res.status(500).json({message:"Internal server error"})
-    }
-} 
-
-
-export const getOrders = async(req,res)=>{
-    try {
-        const orders = await Order.find()
-            .populate("userId", "name email")
-            .populate("items.productId", "name images")
-            .sort({ createdAt: -1 })
-        res.status(200).json(orders)
-    } catch (error) {
-        console.log('error fetching orders',error);
-        res.status(500).json({message:"Internal server error"})
-    }
-}
-
-export const updateOrderStatus = async(req,res)=>{
-    try {
-        const {id}=req.params
-        const { status } = req.body
-        
-        if(!["pending", "processing", "shipped", "delivered", "cancelled"].includes(status)){
-            return res.status(400).json({message:"Invalid status"})
-        }
-
-        const order = await Order.findById(id)
-        if(!order){
-            return res.status(404).json({message:"Order not found"})
-        }
-        order.status = status
-        if(status === "delivered" && !order.deliveredAt){
-            order.deliveredAt = new Date()
-        }
-        if(status === "shipped" && !order.shippedAt){
-            order.shippedAt = new Date()
-        }   
-        if(status === "cancelled" && !order.cancelledAt){
-            order.cancelledAt = new Date()
-        }   
-        if(status === "processing" && !order.processingAt){
-            order.processingAt = new Date()
-        }   
-        if(status === "paid" && !order.paidAt){
-            order.paidAt = new Date()
-        }   
-        if(status === "failed" && !order.failedAt){
-            order.failedAt = new Date()
-        }   
-        if(status === "pending" && !order.pendingAt){
-            order.pendingAt = new Date()
-        }   
-           
-        await order.save()
-        res.status(200).json({message:"Order updated successfully"})
-    } catch (error) {
-        console.log('error updating order',error);
-        res.status(500).json({message:"Internal server error"})
-    }
-}
-
-export const getDashboardStats = async(req,res)=>{
-    try {
-        const totalOrders = await Order.countDocuments()
-
         const revenue = await Order.aggregate([
             {
-                $match: { status: "delivered" }
+                $match: { paymentStatus: 'paid' } // and maybe status: 'delivered' or 'processing'
             },
             {
                 $group: {
                     _id: null,
-                    totalRevenue: { $sum: "$totalPrice" }
+                    totalRevenue: { $sum: '$totalAmount' }
                 }
             }
-        ])
-
-        const totalRevenue = revenue[0]?.totalRevenue || 0
-
-        const totalcustomers = await User.countDocuments()
-        const totalProducts = await Product.countDocuments()
-        const totalUsers = await User.countDocuments()
-        res.status(200)
-            .json({
-                totalOrders,
-                totalProducts,
-                totalUsers,
-                totalRevenue,
-                totalcustomers
-            })
+        ]);
+        
+        res.status(200).json({
+            customers: customersCount,
+            products: productsCount,
+            orders: ordersCount,
+            revenue: revenue[0]?.totalRevenue || 0
+        });
     } catch (error) {
-        console.log('error fetching dashboard stats',error);
-        res.status(500).json({message:"Internal server error"})
+        res.status(500).json({ message: error.message });
     }
-}
+};
 
-export const getAllCustomers = async(req,res)=>{
+// Admin specific list of all customers
+export const getAllCustomers = async (req, res) => {
     try {
-        const users = await User.find().sort({createdAt:-1})
-        res.status(200).json(users)
+        const customers = await User.find().select("-password").sort({ createdAt: -1 });
+        res.status(200).json(customers);
     } catch (error) {
-        console.log('error fetching customers',error);
-        res.status(500).json({message:"Internal server error"})
+        res.status(500).json({ message: error.message });
     }
-}
+};

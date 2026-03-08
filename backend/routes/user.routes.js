@@ -1,36 +1,21 @@
 import express from "express";
-import {
-  signup,
-  login,
-  logout,
-  getAllUser,
-  addAddress,
-  getAddress,
-  updateAddress,
-  deleteAddress,
-  addWishlist,
-  getWishlist,
-  deleteWishlist,
-} from "../controllers/user.controller.js"; 
-import { verifyUser } from "../middleware/verifyUser.js";
-
+import { signup, login, getUsers, getUserById, updateUser, deleteUser, addToWishlist, removeFromWishlist } from "../controllers/user.controller.js";
+import upload from "../middleware/multer.js";
 
 const router = express.Router();
 
+// User Auth
 router.post("/signup", signup);
 router.post("/login", login);
-router.get("/logout", logout);
-router.get("/users", getAllUser);
 
+// User Management
+router.get("/", getUsers);
+router.get("/:id", getUserById);
+router.put("/:id", updateUser);
+router.delete("/:id", deleteUser);
 
-router.post("/address",verifyUser, addAddress)
-router.get("/address",verifyUser, getAddress)
-router.put("/address/:addressId",verifyUser, updateAddress)
-router.delete("/address/:addressId", verifyUser, deleteAddress)
-
-
-router.post("wishlist",verifyUser, addWishlist)
-router.get("wishlist/:id",verifyUser, getWishlist)
-router.delete("wishlist/:id",verifyUser, deleteWishlist)
+// User Wishlist Management
+router.post("/wishlist", addToWishlist);
+router.delete("/wishlist", removeFromWishlist);
 
 export default router;

@@ -1,71 +1,81 @@
-import Product from "../models/Product.model.js";
 import Order from "../models/Order.model.js";
-import ReviewsModel from "../models/Reviews.model.js";
+
+// Create order
 export const createOrder = async (req, res) => {
     try {
-
-        const user = req.user
-
-        const { orderItems, shippingAddress, paymentMethod, itemsPrice, taxPrice, shippingPrice, totalPrice } = req.body
-
-        if (!orderItems || !shippingAddress || !paymentMethod || !itemsPrice || !taxPrice || !shippingPrice || !totalPrice) {
-            return res.status(400).json({ message: 'All fields are required' })
-        }
-        if (!orderItems || orderItems.length === 0) {
-            return res.status(400).json({ message: 'Order items are required' })
-        }
-        
-        for(const item of orderItems){
-            const product = await Product.findById(item.product._id)
-            if(!product){
-                return res.status(404).json({ message: 'Product not found' })
-            }
-            if(item.quantity > product.stock){
-                return res.status(400).json({ message: 'Not enough stock' })
-            }
-        }
-
-        const order = await Order.create({
-            user,
-            orderItems,
+        const { userId, items, totalAmount, shippingAddress, paymentresult, totalprice, paymentStatus, status  } = req.body;
+        const order = new Order({
+            userId,
+            items,
+            totalAmount,
             shippingAddress,
-            paymentMethod,
-            itemsPrice,
-            taxPrice,
-            shippingPrice,
-            totalPrice
-        })
-
-        for(const item of orderItems){
-            const product = await Product.findByIdAndUpdate(item.product._id,
-              {$inc: { stock: - item.quantity }},
-                { new: true }
-            )
-           
-        }
-
-        return res.status(201).json({ message: 'Order created successfully', order })
+            paymentresult,
+            totalprice,
+            paymentStatus,
+            status
+        });
+        const savedOrder = await order.save();
+        res.status(201).json(savedOrder);
     } catch (error) {
-        console.log(error)
-        return res.status(500).json({ message: 'Internal server error' })
+        res.status(400).json({ message: error.message });
     }
-}
+};
 
+// Get all orders (Admin purpose)
 export const getOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ user: req.user._id })
-        .populate("orderItems.product")
-            .sort({ createdAt: -1 })
-        
-        const orderswithreviews = await Promise.all(
-            orders.map(async (order) => {
-                const reviews = await ReviewsModel.findOne({ order: order._id })
-                return reviews
-            })
-        )
-       res.status(200).json({ message: 'Orders fetched successfully', orders }) 
+        const orders = await Order.find().populate("userId", "firstname surname email").populate("items.productId");
+        res.status(200).json(orders);
     } catch (error) {
-        console.log(error)
-        return res.status(500).json({ message: 'Internal server error' })
+        res.status(500).json({ message: error.message });
     }
-}
+};
+
+// Get order by ID
+export const getOrderById = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate("userId", "firstname surname email")
+            .populate("items.productId");
+        if (!order) return res.status(404).json({ message: "Order not found" });
+        res.status(200).json(order);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Update order status (Admin function)
+export const updateOrderStatus = async (req, res) => {
+    try {
+        const updatedOrder = await Order.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+        if (!updatedOrder) return res.status(404).json({ message: "Order not found" });
+        res.status(200).json(updatedOrder);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// Delete order
+export const deleteOrder = async (req, res) => {
+    try {
+        const order = await Order.findByIdAndDelete(req.params.id);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+        res.status(200).json({ message: "Order deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Get user orders
+export const getUserOrders = async (req, res) => {
+    try {
+        const orders = await Order.find({ userId: req.params.userId }).populate("items.productId");
+        res.status(200).json(orders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
