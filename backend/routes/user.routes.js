@@ -1,5 +1,5 @@
 import express from "express";
-import { signup, login, getUsers, getUserById, updateUser, deleteUser, addToWishlist, removeFromWishlist } from "../controllers/user.controller.js";
+import { signup, login, adminSignup, adminLogin, getUsers, getUserById, updateUser, deleteUser, addToWishlist, removeFromWishlist } from "../controllers/user.controller.js";
 import upload from "../middleware/multer.js";
 
 const router = express.Router();
@@ -7,6 +7,8 @@ const router = express.Router();
 // User Auth
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/admin-signup", adminSignup);
+router.post("/admin-login", adminLogin);
 
 // User Management
 router.get("/", getUsers);
